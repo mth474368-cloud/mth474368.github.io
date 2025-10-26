@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Network & Security Scanner</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
+            min-height: 100vh;
+            color: #333;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            margin-bottom: 30px;
+            transition: transform 0.2s;
+        }
+        .container:hover {
+            transform: translateY(-5px);
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .input-group {
+            margin: 15px 0;
+            display: flex;
+            gap: 10px;
+        }
+        input[type="text"] {
+            padding: 12px;
+            width: 100%;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+        input[type="text"]:focus {
+            border-color: #3498db;
+            box-shadow: 0 0 8px rgba(52,152,219,0.3);
+            outline: none;
+        }
+        button {
+            padding: 12px 24px;
+            background: linear-gradient(45deg, #2196F3, #3f51b5);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        button:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        .result {
+            margin: 15px 0;
+            padding: 15px;
+            border-radius: 10px;
+            animation: fadeIn 0.5s ease-in;
+        }
+        .success {
+            background: linear-gradient(45deg, #43A047, #66BB6A);
+            color: white;
+            border: none;
+        }
+        .error {
+            background: linear-gradient(45deg, #e74c3c, #c0392b);
+            color: white;
+            border: none;
+        }
+        .loading {
+            display: none;
+            margin: 15px 0;
+            color: #fff;
+            text-align: center;
+            font-weight: bold;
+        }
+        .muted {
+            color: #7f8c8d;
+            font-size: 0.9em;
+            line-height: 1.6;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border: none;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+            font-family: 'Courier New', monospace;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div id="matrix-bg"></div>
+    <div class="container">
+        <h1>Website Accessibility Check</h1>
+        <div class="input-group">
+            <input type="text" id="urlInput" placeholder="Enter URL (e.g., example.com)" onkeypress="onUrlKey(event)">
+            <button id="checkButton" onclick="checkSite()">Check Site</button>
+        </div>
+        <div class="loading" id="loading">Checking site status...</div>
+        <div id="results"></div>
+        <p class="muted">Note: browser cross-origin restrictions may affect results; a successful fetch indicates reachability but some failures may be due to CORS.</p>
+    </div>
+<div class="container">
+        <h1>SQL Injection Test (client-side heuristic)</h1>
+        <div class="input-group">
+            <input type="text" id="sqlInput" placeholder="Enter query or payload to test" onkeypress="onSqlKey(event)">
+            <button id="sqlButton" onclick="checkSQL()">Test SQL</button>
+        </div>
+        <div id="sqlResults"></div>
+    </div>
+
+    <script>
+        // Matrix background animation
+        const canvas = document.createElement('canvas');
+        canvas.id = 'matrix-canvas';
+        canvas.style.position = 'fixed';
+        canvas.style.top = '0';
+        canvas.style.left = '0';
+        canvas.style.width = '100vw';
+        canvas.style.height = '100vh';
+        canvas.style.zIndex = '-1';
+        canvas.style.pointerEvents = 'none';
+        document.getElementById('matrix-bg').appendChild(canvas);
+
+        function resizeMatrix() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeMatrix);
+        resizeMatrix();
+
+        const ctx = canvas.getContext('2d');
+        const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz@#$%^&*()';
+        const fontSize = 18;
+        const columns = Math.floor(canvas.width / fontSize);
+        const drops = Array(columns).fill(1);
+
+        function drawMatrix() {
+            ctx.fillStyle = 'rgba(20, 20, 20, 0.15)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.font = fontSize + "px monospace";
+            ctx.fillStyle = '#00ff41';
+            for (let i = 0; i < drops.length; i++) {
+                const text = chars[Math.floor(Math.random() * chars.length)];
+                ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+                if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+                    drops[i] = 0;
+                }
+                drops[i]++;
+            }
+        }
+        setInterval(drawMatrix, 50);
+
+        function onUrlKey(e) { if (e.key === 'Enter') checkSite(); }
+        function onSqlKey(e) { if (e.key === 'Enter') checkSQL(); }
+
+        // Helper: fetch with timeout using AbortController
+        async function fetchWithTimeout(resource, options = {}, timeout = 5000) {
+            const controller = new AbortController();
+            const id = setTimeout(() => controller.abort(), timeout);
+            try {
+                const resp = await fetch(resource, { ...options, signal: controller.signal });
+                clearTimeout(id);
+                return resp;
+            } catch (err) {
+                clearTimeout(id);
+                throw err;
+            }
+        }
+
+        async function checkSite() {
+            const urlInput = document.getElementById('urlInput');
+            const resultsDiv = document.getElementById('results');
+            const loadingDiv = document.getElementById('loading');
+            const checkButton = document.getElementById('checkButton');
+
+            const raw = urlInput.value.trim();
+            if (!raw) { alert('Please enter a URL'); return; }
+
+            loadingDiv.style.display = 'block';
+            resultsDiv.innerHTML = '';
+            checkButton.disabled = true;
+
+            const start = performance.now();
+            const clean = raw.startsWith('http://') || raw.startsWith('https://') ? raw : 'https://' + raw;
+
+            try {
+                // Try a plain fetch; use 'no-cors' as a fallback since many sites block CORS.
+                let resp;
+                try {
+                    resp = await fetchWithTimeout(clean, { mode: 'cors' }, 5000);
+                } catch (e) {
+                    // if CORS or network blocks, try no-cors (opaque) to at least test connectivity
+                    resp = await fetchWithTimeout(clean, { mode: 'no-cors' }, 5000);
+                }
+
+                const end = performance.now();
+                const timeMs = (end - start).toFixed(2);
+// Treat opaque responses as reachable; otherwise check ok flag
+                const reachable = resp && (resp.type === 'opaque' || resp.ok);
+
+                if (reachable) {
+                    resultsDiv.innerHTML = 
+                        <div class="result success">
+                            ✅ Site is accessible<br>
+                            🕒 Response time: ${timeMs} ms
+                        </div>;
+                } else {
+                    resultsDiv.innerHTML = 
+                        <div class="result error">
+                            ❌ Site responded with an error (status: ${resp.status})<br>
+                            🕒 Time: ${timeMs} ms
+                        </div>;
+                }
+            } catch (err) {
+                const msg = err.name === 'AbortError' ? 'Connection timed out' : err.message || 'Network error';
+                resultsDiv.innerHTML = 
+                    <div class="result error">
+                        ❌ Site is not accessible<br>
+                        ⚠️ ${msg}
+                    </div>;
+            } finally {
+                loadingDiv.style.display = 'none';
+                checkButton.disabled = false;
+            }
+        }
+
+        function checkSQL() {
+            const q = document.getElementById('sqlInput').value.trim();
+            const resultsDiv = document.getElementById('sqlResults');
+            if (!q) { alert('Please enter a query to test'); return; }
+
+            const sqlPatterns = [
+                "'", "--", "/*", "*/", "1=1", "OR 1=1", "AND 1=1",
+                "UNION", "SELECT", "INSERT", "UPDATE", "DELETE", "DROP", "EXEC", "xp_"
+            ];
+
+            const detected = sqlPatterns.filter(p => q.toUpperCase().includes(p.toUpperCase()));
+
+            if (detected.length) {
+                resultsDiv.innerHTML = 
+                    <div class="result error">
+                        ⚠️ Potential SQL injection patterns detected:<br>
+                        <pre>${detected.join(', ')}</pre>
+                    </div>;
+            } else {
+                resultsDiv.innerHTML = 
+                    <div class="result success">
+                        ✅ No common SQL injection patterns detected
+                    </div>;
+            }
+        }
+    </script>
+</body>
+</html>
